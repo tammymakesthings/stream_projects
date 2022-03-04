@@ -1,0 +1,26 @@
+[project]
+name = "macropad_midi"
+version = "0.0.0-auto.0"
+description = "MIDI controller on your MacroPad"
+authors = [ "Tammy Cravit <tammy@tammymakesthings.com>",]
+license = "MIT"
+readme = "README.rst"
+python = "^3.6"
+homepage = "https://github.com/tammymakesthings/stream_projects/macropad_midi"
+repository = "https://github.com/tammymakesthings/stream_projects/macropad_midi"
+keywords = [ "microcontroller", "MacroPad", "MIDI", "music",]
+classifiers = [ "Development Status :: 3 - Alpha", "Environment :: Other Environment", "License :: OSI Approved :: MIT License", "Programming Language :: Python :: 3", "Programming Language :: Python :: Implementation :: MicroPython", "Programming Language :: Python :: Implementation :: CircuitPython", "Topic :: Software Development :: Embedded Systems", "Topic :: Multimedia :: Sound/Audio :: MIDI",]
+
+[tool.piku]
+project = "macropad_midi"
+piku = "0.1.8"
+circuitpython = "7"
+
+[tool.piku.dependencies]
+adafruit_macropad = "~7"
+adafruit_debouncer = "~7"
+adafruit_simple_text_display = "~7"
+neopixel = "~7"
+adafruit_display_text = "~7"
+adafruit_midi = "~7"
+adafruit_displayio_layout = "~7"
