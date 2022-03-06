@@ -8,7 +8,7 @@
 #   - [ ] Send a MIDI on event on a key press
 #   - [ ] Send a MIDI off event on a key release
 #   - [ ] Light up buttons while they're being pressed
-#   - [ ] Screen to display note and the encoder
+#   - [X] Screen to display note and the encoder
 #   - [ ] Send a MIDI CC message with knob
 #   - [ ] Send a MIDI CC message with encoder switch
 # Other Stuff
@@ -28,35 +28,16 @@ from rainbowio import colorwheel
 # Helper Routines
 
 
-def update_display(
-    display_text: macropad.display_text,
-    midi_note: str,
-    encoder_val: int,
-    encoder_sw: bool,
-) -> None:
-    display_text[0].text = "Note     : {}".format(midi_note)
-
-    if encoder_sw:
-        display_text[1].text = "[Encoder]: {}".format(encoder_val)
-    else:
-        display_text[1].text = "Encoder  : {}".format(encoder_val)
-
-    display_text[2].text = ""
-    display_text.show()
-
-
 # Global Variables/Setup
 
 macropad = MacroPad()
-macropad.display.auto_refresh = False
 
-text_lines = macropad.display_text("MIDI Controller")
-
-
-# Event Loop
+text_lines = macropad.display_text(title="=|MIDI Controller|=")
 key_event_description = "---"
 encoder_val = 0
 encoder_sw = False
+
+# Event Loop
 
 while True:
     while macropad.keys.events:
@@ -70,6 +51,14 @@ while True:
                 key_event_description = "RELEASE: {}".format(key)
         else:
             key_event_description = "---"
-        encoder_val = macropad.encoder
-        encoder_sw = macropad.encoder_switch
-        update_display(text_lines, key_event_description, encoder_val, encoder_sw)
+    encoder_val = macropad.encoder
+    encoder_sw = macropad.encoder_switch
+
+    #    text_lines[0].text = "Note     : {}".format(midi_note)
+    text_lines[0].text = key_event_description
+    if encoder_sw:
+        text_lines[1].text = "*Encoder*: {}".format(encoder_val)
+    else:
+        text_lines[1].text = "-Encoder-: {}".format(encoder_val)
+    text_lines[2].text = ""
+    text_lines.show()
