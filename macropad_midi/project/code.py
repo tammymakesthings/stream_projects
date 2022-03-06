@@ -37,9 +37,14 @@ MIDI_NOTE_VELOCITY = 120
 macropad = MacroPad()
 
 text_lines = macropad.display_text(title="=|MIDI Controller|=")
-key_event_description = "---"
+key_event_description = "KEY      : ---"
+
 encoder_val = 0
 encoder_sw = False
+pitch_bend = 0
+
+
+last_encoder_position = macropad.encoder
 
 # Event Loop
 
@@ -50,7 +55,7 @@ while True:
             key = key_event.key_number
 
             if key_event.pressed:
-                key_event_description = "PRESS: {}".format(key)
+                key_event_description = "KEY      : ON  {}".format(key)
                 color_index = int(255 / 12) * key
                 macropad.pixels[key] = colorwheel(color_index)
                 macropad.midi.send(macropad.NoteOn(MIDI_NOTES[key], MIDI_NOTE_VELOCITY))
@@ -62,7 +67,7 @@ while True:
 
             if key_event.released:
                 macropad.pixels.fill((0, 0, 0))
-                key_event_description = "RELEASE: {}".format(key)
+                key_event_description = "KEY      : OFF {}".format(key)
                 macropad.midi.send(macropad.NoteOff(MIDI_NOTES[key], 0))
                 print(
                     "Sent MIDI Note OFF message for note number {}".format(
@@ -70,8 +75,16 @@ while True:
                     )
                 )
         else:
-            key_event_description = "---"
+            key_event_description = "KEY      : ---"
+
     encoder_val = macropad.encoder
+    if encoder_val is not last_encoder_position:
+        encoder_change = encoder_val - last_encoder_position
+        last_encoder_position = encoder_change
+        pitch_bend = min(max(pitch_bend + encoder_change, 0), 15)
+        print("Sending MIDI pitch bend = {}".format(pitch_bend * 1024))
+        macropad.midi.send(macropad.PitchBend(pitch_bend * 1024))
+
     encoder_sw = macropad.encoder_switch
 
     #    text_lines[0].text = "Note     : {}".format(midi_note)
@@ -80,5 +93,5 @@ while True:
         text_lines[1].text = "*Encoder*: {}".format(encoder_val)
     else:
         text_lines[1].text = "-Encoder-: {}".format(encoder_val)
-    text_lines[2].text = ""
+    text_lines[2].text = "PitchBend: {}".format(pitch_bend * 1024)
     text_lines.show()
