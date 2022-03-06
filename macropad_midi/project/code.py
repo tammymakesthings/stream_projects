@@ -21,9 +21,13 @@ try:
 except ImportError:
     pass
 
+
 # Setup Code
 from adafruit_macropad import MacroPad
 from rainbowio import colorwheel
+
+MIDI_NOTES = [57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68]
+MIDI_NOTE_VELOCITY = 120
 
 # Helper Routines
 
@@ -49,9 +53,22 @@ while True:
                 key_event_description = "PRESS: {}".format(key)
                 color_index = int(255 / 12) * key
                 macropad.pixels[key] = colorwheel(color_index)
+                macropad.midi.send(macropad.NoteOn(MIDI_NOTES[key], MIDI_NOTE_VELOCITY))
+                print(
+                    "Sent MIDI Note ON message for note number {}".format(
+                        MIDI_NOTES[key]
+                    )
+                )
+
             if key_event.released:
                 macropad.pixels.fill((0, 0, 0))
                 key_event_description = "RELEASE: {}".format(key)
+                macropad.midi.send(macropad.NoteOff(MIDI_NOTES[key], 0))
+                print(
+                    "Sent MIDI Note OFF message for note number {}".format(
+                        MIDI_NOTES[key]
+                    )
+                )
         else:
             key_event_description = "---"
     encoder_val = macropad.encoder
