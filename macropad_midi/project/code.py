@@ -7,7 +7,7 @@
 # - MIDI stuff
 #   - [ ] Send a MIDI on event on a key press
 #   - [ ] Send a MIDI off event on a key release
-#   - [ ] Light up buttons while they're being pressed
+#   - [X] Light up buttons while they're being pressed
 #   - [X] Screen to display note and the encoder
 #   - [ ] Send a MIDI CC message with knob
 #   - [ ] Send a MIDI CC message with encoder switch
@@ -47,7 +47,10 @@ while True:
 
             if key_event.pressed:
                 key_event_description = "PRESS: {}".format(key)
+                color_index = int(255 / 12) * key
+                macropad.pixels[key] = colorwheel(color_index)
             if key_event.released:
+                macropad.pixels.fill((0, 0, 0))
                 key_event_description = "RELEASE: {}".format(key)
         else:
             key_event_description = "---"
