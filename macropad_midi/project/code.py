@@ -2,6 +2,20 @@
 #
 # SPDX-License-Identifier: Unlicense
 
+##########################################################################################
+# TO-DO LIST:
+# - MIDI stuff
+#   - [ ] Send a MIDI on event on a key press
+#   - [ ] Send a MIDI off event on a key release
+#   - [ ] Light up buttons while they're being pressed
+#   - [ ] Screen to display note and the encoder
+#   - [ ] Send a MIDI CC message with knob
+#   - [ ] Send a MIDI CC message with encoder switch
+# Other Stuff
+#   - [ ] Read the sensor
+#   - [ ] Sensor value to pitch-bend
+#########################################################################################
+
 try:
     from typing import Optional
 except ImportError:
@@ -38,14 +52,6 @@ macropad.display.auto_refresh = False
 
 text_lines = macropad.display_text("MIDI Controller")
 
-
-# MIDI stuff
-# - Send a MIDI on event on a key press
-# - Send a MIDI off event on a key release
-# - Light up buttons while they're being pressed
-# - Screen to display note and the encoder
-# - Send a MIDI CC message with knob
-# - Send a MIDI CC message with encoder switch
 
 # Event Loop
 key_event_description = "---"

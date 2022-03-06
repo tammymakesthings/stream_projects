@@ -1,0 +1,5 @@
+{
+    "esbonio.server.enabled": true,
+    "restructuredtext.confPath": "${workspaceFolder}/docs",
+    "esbonio.sphinx.confDir": "/media/psf/tammy/Dropbox/projects/stream_projects/macropad_midi/docs"
+}
