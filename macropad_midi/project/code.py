@@ -5,11 +5,11 @@
 ##########################################################################################
 # TO-DO LIST:
 # - MIDI stuff
-#   - [ ] Send a MIDI on event on a key press
-#   - [ ] Send a MIDI off event on a key release
+#   - [X] Send a MIDI on event on a key press
+#   - [X] Send a MIDI off event on a key release
 #   - [X] Light up buttons while they're being pressed
 #   - [X] Screen to display note and the encoder
-#   - [ ] Send a MIDI CC message with knob
+#   - [X] Send a MIDI Pitch Bend  message with knob
 #   - [ ] Send a MIDI CC message with encoder switch
 # Other Stuff
 #   - [ ] Read the sensor
