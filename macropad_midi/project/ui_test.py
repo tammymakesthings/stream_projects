@@ -1,11 +1,24 @@
+#####################################################################################
+# UI Test for PyGameDisplay
+#####################################################################################
+# I had to make a couple of changes to the Blinka libraries to make this work on 
+# Linux:
+# 
+# 1. Comment out the "raise NotImplementedError" on line 276 of 
+#    site-packages/board.py
+# 2. Comment out the "raise NotImplementedError" on line 105 of
+#    site-packages/microcontroller/pin.py
+####################################################################################
+
 try:
     from typing import List
 except ImportError:
     pass
 
 import board
-from adafruit_macropad import MacroPad
-from rainbowio import colorwheel
+import pygame
+
+from blinka_displayio_pygamedisplay import PyGameDisplay
 
 import terminalio
 import displayio
@@ -13,7 +26,7 @@ from adafruit_display_shapes.rect import Rect
 from adafruit_display_shapes.roundrect import RoundRect
 from adafruit_display_text import label
 
-def build_ui(display = board.DISPLAY) -> List[displayio.Group, label.Label, label.Label, label.Label]:
+def build_ui(display: displayio.Display) -> list:
     splash = displayio.Group()
     display.show(splash)
 
@@ -98,7 +111,12 @@ def build_ui(display = board.DISPLAY) -> List[displayio.Group, label.Label, labe
 
     return [splash, note_text_label, encoder_text_label, encoder_switch_text_label]
 
-splash, note_label, encoder_label, encoder_switch_label = build_ui(board.DISPLAY)
+if __name__ == '__main__':
+    display = PyGameDisplay(width=128, height=64, color_depth=2, grayscale=True)
+    splash, note_label, encoder_label, encoder_switch_label = build_ui(display)
 
-while True:
-    pass
+    try:
+        while True:
+            pass
+    except pygame.error:
+        raise SystemExit()
