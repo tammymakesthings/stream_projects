@@ -4,13 +4,33 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "run: run UI simulation",
+            "type": "shell",
+            "command": "python3 ${workspaceFolder}/project/new_ui.py",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "deploy: copy code.py to macropad",
+            "type": "shell",
+            "command": "cp -R ${workspaceFolder}/project/code.py /media/tammy/CIRCUITPY",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },    
+        {
             "label": "deploy: copy project to macropad",
             "type": "shell",
             "command": "cp -R ${workspaceFolder}/project/code.py ${workspaceFolder}/project/lib /media/tammy/CIRCUITPY",
             "problemMatcher": [],
             "group": {
                 "kind": "build",
-                "isDefault": true
+                "isDefault": false
             }
         },
         {
