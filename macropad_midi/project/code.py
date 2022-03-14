@@ -12,71 +12,247 @@
 #   - [X] Send a MIDI Pitch Bend  message with knob
 #   - [ ] Send a MIDI CC message with encoder switch
 # Other Stuff
-#   - [ ] Read the sensor
-#   - [ ] Sensor value to pitch-bend
+#   - [ ] Read the sensors
+#   - [ ] Temperature value to pitch-bend
+#   - [ ] IMU sensor to MIDI messages
+#   - [X] Redo UI with DisplayIO
+#   - [ ] Redo UI and sensor code with asyncio
 #########################################################################################
 
 try:
-    from typing import Optional
+    from typing import Optional, Union
 except ImportError:
     pass
 
 
 # Setup Code
+import time
+import board
+from micropython import const
+
 from adafruit_macropad import MacroPad
 from rainbowio import colorwheel
+import terminalio
 
-MIDI_NOTES = [57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68]
-MIDI_NOTE_VELOCITY = 120
+import displayio
+from adafruit_display_shapes.rect import Rect
+from adafruit_display_shapes.roundrect import RoundRect
+from adafruit_display_text import label
 
+MIDI_NOTES: List[int, ...] = [57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68]
+MIDI_NOTE_VELOCITY: int = 120
+
+KEY_NONE: int = const(0)
+KEY_PRESSED: int = const(1)
+KEY_RELEASED: int = const(2)
+
+##############################################################################
 # Helper Routines
+##############################################################################
+
+def build_ui(display: displayio.Display = board.DISPLAY) -> List[
+    displayio.Group, # Root group
+    label.Label,     # Note label
+    label.Label,     # Encoder label
+    label.Label      # Switch label
+    ]:
+
+    """
+    Build the MacroPad MIDI User Interface
+
+    Args:
+        display (displayio.Display, optional): The display object. 
+        Defaults to board.DISPLAY.
+
+    Returns:
+        List[displayio.Group, label.Label, label.Label, label.Label]: The result list.
+            [0]: displayio.Group  - The splash group
+            [1]: label.Label - The note value label
+            [2]: label.Label - The encoder value label
+            [3]: label.Label - The encoder switch label
+    """
+
+    splash = displayio.Group()
+    display.show(splash)
+
+    title_group = displayio.Group()
+    title_group_bg = RoundRect(0, 0, 128, 15, 5, fill=0xffffff)
+    title_group.append(title_group_bg)
+    title_label = label.Label(
+        terminalio.FONT, 
+        text="=| MacroPad MIDI |=",
+        color=0x000000
+    )
+    title_label.x = 7
+    title_label.y = 6
+    title_group.append(title_label)
+
+    note_group = displayio.Group()
+    note_group.append(RoundRect(0, 23, 55, 12, 5, fill=0xffffff))
+    note_caption_label = label.Label(
+        terminalio.FONT, 
+        text="Note:", 
+        color=0x000000
+    )
+    note_caption_label.anchor_point = (1.0, 0.5)
+    note_caption_label.anchored_position = (55, 28)
+    note_group.append(note_caption_label)
+
+    note_text_label = label.Label(
+        terminalio.FONT, 
+        text="ON C#3", 
+        color=0xffffff
+    )
+    note_text_label.x = 65
+    note_text_label.y = 28
+    note_group.append(note_text_label)
+
+    encoder_group = displayio.Group()
+    encoder_group.append(RoundRect(0, 37, 55, 12, 5, fill=0xffffff))
+
+    encoder_caption_label = label.Label(
+        terminalio.FONT, 
+        text="PBend:", 
+        color=0x000000
+    )
+    encoder_caption_label.anchor_point = (1.0, 0.5)
+    encoder_caption_label.anchored_position = (55, 41)
+    encoder_group.append(encoder_caption_label)
+    encoder_text_label = label.Label(
+        terminalio.FONT,
+        text="-10",
+        color=0xffffff
+    )
+    encoder_text_label.x = 65
+    encoder_text_label.y = 41
+    encoder_group.append(encoder_text_label)
+
+    encoder_switch_group = displayio.Group()
+    encoder_group.append(RoundRect(0, 51, 55, 12, 5, fill=0xffffff))
 
 
-# Global Variables/Setup
+    encoder_switch_caption_label = label.Label(
+        terminalio.FONT, 
+        text="EncSw:", 
+        color=0x000000
+    )
+    encoder_switch_caption_label.anchor_point = (1.0, 0.5)
+    encoder_switch_caption_label.anchored_position = (56, 56)
+    encoder_switch_group.append(encoder_switch_caption_label)
 
-macropad = MacroPad()
+    encoder_switch_text_label = label.Label(
+        terminalio.FONT,
+        text="Off",
+        color=0xffffff
+    )
+    encoder_switch_text_label.x = 65
+    encoder_switch_text_label.y = 56
+    encoder_switch_group.append(encoder_switch_text_label)
 
-text_lines = macropad.display_text(title="=|MIDI Controller|=")
-key_event_description = "KEY      : ---"
+    splash.append(title_group)
+    splash.append(note_group)
+    splash.append(encoder_group)
+    splash.append(encoder_switch_group)
 
-encoder_val = 0
-encoder_sw = False
-pitch_bend = 0
+    return [splash, note_text_label, encoder_text_label, encoder_switch_text_label]
 
+def handle_key_event(event_type: int, key_number: int) -> None:
 
-last_encoder_position = macropad.encoder
+    """
+    Handle a keyboard event.
 
+    Args:
+        event_type (int): The event type. KEY_PRESSED, KEY_RELEASED, or KEY_NONE.
+        key_number (int): The pressed key number (0-12)
+    """
+
+    global key_event_description, macropad
+
+    if event_type == KEY_PRESSED:
+        key_event_description = "ON  {}".format(key)
+        color_index = int(255 / 12) * key
+        macropad.pixels[key] = colorwheel(color_index)
+        macropad.midi.send(macropad.NoteOn(MIDI_NOTES[key], MIDI_NOTE_VELOCITY))
+        print("Sent MIDI Note ON message for note number {}".format(
+            MIDI_NOTES[key]
+            )
+        )
+    elif event_type == KEY_RELEASED:
+        macropad.pixels.fill((0, 0, 0))
+        key_event_description = "OFF {}".format(key)
+        macropad.midi.send(macropad.NoteOff(MIDI_NOTES[key], 0))
+        print("Sent MIDI Note OFF message for note number {}".format(
+            MIDI_NOTES[key]
+            )
+        )
+    else:
+        key_event_description = "---"
+
+def last_key_event_type() -> int:
+    """
+    Get the type of the last key event.
+
+    This currently works by parsing the key event description. Should probably
+    be refactored.
+
+    Returns:
+        int: The key event type (KEY_PRESSED, KEY_RELEASED, KEY_NONE),
+    """
+
+    global key_event_description
+    if key_event_description and (len(key_event_description) > 3):
+        if key_event_description[0:3].upper() == 'OFF':
+            return KEY_RELEASED
+        elif key_event_description[0:2].upper() == 'ON':
+            return KEY_PRESSED
+        else:
+            return KEY_NONE
+    
+##############################################################################
+# Global Variables
+##############################################################################
+
+macropad: MacroPad = MacroPad()
+splash: Optional[displayio.Group] = None
+note_label: Optional[label.Label] = None
+note_label: Optional[label.Label] = None
+note_label: Optional[label.Label] = None
+
+key_event_description: str = "---"
+
+encoder_val: int = 0
+encoder_sw: bool = False
+pitch_bend: Union[int, float] = 0
+last_note_time: float = 0
+
+##############################################################################
+# Application Setup
+##############################################################################
+
+last_encoder_position: int = macropad.encoder
+splash, note_label, encoder_label, encoder_switch_label = \
+    build_ui(board.DISPLAY)
+
+##############################################################################
 # Event Loop
+##############################################################################
 
 while True:
     while macropad.keys.events:
         key_event = macropad.keys.events.get()
         if key_event:
             key = key_event.key_number
+            last_note_time = time.monotonic()
 
             if key_event.pressed:
-                key_event_description = "KEY      : ON  {}".format(key)
-                color_index = int(255 / 12) * key
-                macropad.pixels[key] = colorwheel(color_index)
-                macropad.midi.send(macropad.NoteOn(MIDI_NOTES[key], MIDI_NOTE_VELOCITY))
-                print(
-                    "Sent MIDI Note ON message for note number {}".format(
-                        MIDI_NOTES[key]
-                    )
-                )
+                handle_key_event(KEY_PRESSED, key)
+            elif key_event.released:
+                handle_key_event(KEY_RELEASED, key)
 
-            if key_event.released:
-                macropad.pixels.fill((0, 0, 0))
-                key_event_description = "KEY      : OFF {}".format(key)
-                macropad.midi.send(macropad.NoteOff(MIDI_NOTES[key], 0))
-                print(
-                    "Sent MIDI Note OFF message for note number {}".format(
-                        MIDI_NOTES[key]
-                    )
-                )
-        else:
-            key_event_description = "KEY      : ---"
-
+    if (time.monotonic() > last_note_time + 0.75) and \
+        (last_key_event_type() == KEY_RELEASED):
+        key_event_description = "---"
+    
     encoder_val = macropad.encoder
     if encoder_val is not last_encoder_position:
         encoder_change = encoder_val - last_encoder_position
@@ -87,11 +263,6 @@ while True:
 
     encoder_sw = macropad.encoder_switch
 
-    #    text_lines[0].text = "Note     : {}".format(midi_note)
-    text_lines[0].text = key_event_description
-    if encoder_sw:
-        text_lines[1].text = "*Encoder*: {}".format(encoder_val)
-    else:
-        text_lines[1].text = "-Encoder-: {}".format(encoder_val)
-    text_lines[2].text = "PitchBend: {}".format(pitch_bend * 1024)
-    text_lines.show()
+    note_label.text = key_event_description
+    encoder_label.text = str(pitch_bend * 1024)
+    encoder_switch_label.text = "* ON *" if encoder_sw else "OFF"
