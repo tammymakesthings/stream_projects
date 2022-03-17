@@ -12,11 +12,12 @@
 #   - [X] Send a MIDI Pitch Bend  message with knob
 #   - [ ] Send a MIDI CC message with encoder switch
 # Other Stuff
-#   - [ ] Read the sensors
+#   - [X] Read the sensors
 #   - [ ] Temperature value to pitch-bend
-#   - [ ] IMU sensor to MIDI messages
+#   - [X] IMU sensor to MIDI messages
 #   - [X] Redo UI with DisplayIO
 #   - [ ] Redo UI and sensor code with asyncio
+#   - [ ] Refactoring
 #########################################################################################
 
 try:
@@ -28,6 +29,7 @@ except ImportError:
 # Setup Code
 import time
 import board
+import math
 from micropython import const
 
 from adafruit_macropad import MacroPad
@@ -39,12 +41,16 @@ from adafruit_display_shapes.rect import Rect
 from adafruit_display_shapes.roundrect import RoundRect
 from adafruit_display_text import label
 
+import adafruit_icm20x
+import adafruit_bmp280
+
 MIDI_NOTES: List[int, ...] = [57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68]
 MIDI_NOTE_VELOCITY: int = 120
 
 KEY_NONE: int = const(0)
 KEY_PRESSED: int = const(1)
 KEY_RELEASED: int = const(2)
+
 
 ##############################################################################
 # Helper Routines
@@ -156,7 +162,11 @@ def build_ui(display: displayio.Display = board.DISPLAY) -> List[
 
     return [splash, note_text_label, encoder_text_label, encoder_switch_text_label]
 
-def handle_key_event(event_type: int, key_number: int) -> None:
+def handle_key_event(
+    event_type: int, 
+    key_number: int, 
+    velocity: int = MIDI_NOTE_VELOCITY
+    ) -> None:
 
     """
     Handle a keyboard event.
@@ -164,6 +174,7 @@ def handle_key_event(event_type: int, key_number: int) -> None:
     Args:
         event_type (int): The event type. KEY_PRESSED, KEY_RELEASED, or KEY_NONE.
         key_number (int): The pressed key number (0-12)
+        velocity (int): The pressed key velocity. Defaults to MIDI_NOTE_VELOCITY.
     """
 
     global key_event_description, macropad
@@ -172,7 +183,7 @@ def handle_key_event(event_type: int, key_number: int) -> None:
         key_event_description = "ON  {}".format(key)
         color_index = int(255 / 12) * key
         macropad.pixels[key] = colorwheel(color_index)
-        macropad.midi.send(macropad.NoteOn(MIDI_NOTES[key], MIDI_NOTE_VELOCITY))
+        macropad.midi.send(macropad.NoteOn(MIDI_NOTES[key], velocity))
         print("Sent MIDI Note ON message for note number {}".format(
             MIDI_NOTES[key]
             )
@@ -213,6 +224,11 @@ def last_key_event_type() -> int:
 ##############################################################################
 
 macropad: MacroPad = MacroPad()
+
+i2c_bus = board.I2C()   # uses board.SCL and board.SDA
+imu_sensor = adafruit_icm20x.ICM20649(i2c_bus)
+temp_sensor = adafruit_bmp280.Adafruit_BMP280_I2C(i2c_bus)
+
 splash: Optional[displayio.Group] = None
 note_label: Optional[label.Label] = None
 note_label: Optional[label.Label] = None
@@ -224,6 +240,17 @@ encoder_val: int = 0
 encoder_sw: bool = False
 pitch_bend: Union[int, float] = 0
 last_note_time: float = 0
+
+accel_x, accel_y, accel_z  = 0.0, 0.0, 0.0
+gyro_x, gyro_y, gyro_z = 0.0, 0.0, 0.0
+
+temp = 0.0
+pressure = 0.0
+altitude = 0.0
+
+last_accel_x, last_accel_y, last_accel_z  = 0.0, 0.0, 0.0
+last_gyro_x, last_gyro_y, last_gyro_z  = 0.0, 0.0, 0.0
+note_velocity: int = 0
 
 ##############################################################################
 # Application Setup
@@ -238,6 +265,31 @@ splash, note_label, encoder_label, encoder_switch_label = \
 ##############################################################################
 
 while True:
+
+    last_accel_x, last_accel_y, last_accel_z = imu_sensor.acceleration
+    last_gyro_x, last_gyro_y, last_gyro_z = last_gyro_values = imu_sensor.gyro
+
+    temp = temp_sensor.temperature
+    pressure = temp_sensor.pressure
+    altitude = temp_sensor.altitude
+    
+    accel_x = (accel_x * 0.9) + (last_accel_x * 0.1)
+    accel_y = (accel_y * 0.9) + (last_accel_y * 0.1)
+    accel_z = (accel_z * 0.9) + (last_accel_z * 0.1)
+
+    gyro_x = (gyro_x * 0.9) + (last_gyro_x * 0.1)
+    gyro_y = (gyro_y * 0.9) + (last_gyro_y * 0.1)
+    gyro_z = (gyro_z * 0.9) + (last_gyro_z * 0.1)
+
+    note_velocity = math.fabs(accel_x) * 1000 + math.fabs(accel_y) * 1000
+    note_velocity = int(note_velocity / 15.0)
+    note_velocity = 127 - note_velocity
+
+    if note_velocity < 0:
+        note_velocity = 0
+    if note_velocity > 127:
+        note_velocity = 127
+
     while macropad.keys.events:
         key_event = macropad.keys.events.get()
         if key_event:
