@@ -22,7 +22,7 @@
                 "kind": "build",
                 "isDefault": true
             }
-        },    
+        },
         {
             "label": "deploy: copy project to macropad",
             "type": "shell",

@@ -26,23 +26,22 @@ except ImportError:
     pass
 
 
+import math
+
 # Setup Code
 import time
+
+import adafruit_bmp280
+import adafruit_icm20x
 import board
-import math
-from micropython import const
-
-from adafruit_macropad import MacroPad
-from rainbowio import colorwheel
-import terminalio
-
 import displayio
+import terminalio
 from adafruit_display_shapes.rect import Rect
 from adafruit_display_shapes.roundrect import RoundRect
 from adafruit_display_text import label
-
-import adafruit_icm20x
-import adafruit_bmp280
+from adafruit_macropad import MacroPad
+from micropython import const
+from rainbowio import colorwheel
 
 MIDI_NOTES: List[int, ...] = [57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68]
 MIDI_NOTE_VELOCITY: int = 120
@@ -56,18 +55,21 @@ KEY_RELEASED: int = const(2)
 # Helper Routines
 ##############################################################################
 
-def build_ui(display: displayio.Display = board.DISPLAY) -> List[
-    displayio.Group, # Root group
-    label.Label,     # Note label
-    label.Label,     # Encoder label
-    label.Label      # Switch label
-    ]:
+
+def build_ui(
+    display: displayio.Display = board.DISPLAY,
+) -> List[
+    displayio.Group,  # Root group
+    label.Label,  # Note label
+    label.Label,  # Encoder label
+    label.Label,  # Switch label
+]:
 
     """
     Build the MacroPad MIDI User Interface
 
     Args:
-        display (displayio.Display, optional): The display object. 
+        display (displayio.Display, optional): The display object.
         Defaults to board.DISPLAY.
 
     Returns:
@@ -82,75 +84,50 @@ def build_ui(display: displayio.Display = board.DISPLAY) -> List[
     display.show(splash)
 
     title_group = displayio.Group()
-    title_group_bg = RoundRect(0, 0, 128, 15, 5, fill=0xffffff)
+    title_group_bg = RoundRect(0, 0, 128, 15, 5, fill=0xFFFFFF)
     title_group.append(title_group_bg)
     title_label = label.Label(
-        terminalio.FONT, 
-        text="=| MacroPad MIDI |=",
-        color=0x000000
+        terminalio.FONT, text="=| MacroPad MIDI |=", color=0x000000
     )
     title_label.x = 7
     title_label.y = 6
     title_group.append(title_label)
 
     note_group = displayio.Group()
-    note_group.append(RoundRect(0, 23, 55, 12, 5, fill=0xffffff))
-    note_caption_label = label.Label(
-        terminalio.FONT, 
-        text="Note:", 
-        color=0x000000
-    )
+    note_group.append(RoundRect(0, 23, 55, 12, 5, fill=0xFFFFFF))
+    note_caption_label = label.Label(terminalio.FONT, text="Note:", color=0x000000)
     note_caption_label.anchor_point = (1.0, 0.5)
     note_caption_label.anchored_position = (55, 28)
     note_group.append(note_caption_label)
 
-    note_text_label = label.Label(
-        terminalio.FONT, 
-        text="ON C#3", 
-        color=0xffffff
-    )
+    note_text_label = label.Label(terminalio.FONT, text="ON C#3", color=0xFFFFFF)
     note_text_label.x = 65
     note_text_label.y = 28
     note_group.append(note_text_label)
 
     encoder_group = displayio.Group()
-    encoder_group.append(RoundRect(0, 37, 55, 12, 5, fill=0xffffff))
+    encoder_group.append(RoundRect(0, 37, 55, 12, 5, fill=0xFFFFFF))
 
-    encoder_caption_label = label.Label(
-        terminalio.FONT, 
-        text="PBend:", 
-        color=0x000000
-    )
+    encoder_caption_label = label.Label(terminalio.FONT, text="PBend:", color=0x000000)
     encoder_caption_label.anchor_point = (1.0, 0.5)
     encoder_caption_label.anchored_position = (55, 41)
     encoder_group.append(encoder_caption_label)
-    encoder_text_label = label.Label(
-        terminalio.FONT,
-        text="-10",
-        color=0xffffff
-    )
+    encoder_text_label = label.Label(terminalio.FONT, text="-10", color=0xFFFFFF)
     encoder_text_label.x = 65
     encoder_text_label.y = 41
     encoder_group.append(encoder_text_label)
 
     encoder_switch_group = displayio.Group()
-    encoder_group.append(RoundRect(0, 51, 55, 12, 5, fill=0xffffff))
-
+    encoder_group.append(RoundRect(0, 51, 55, 12, 5, fill=0xFFFFFF))
 
     encoder_switch_caption_label = label.Label(
-        terminalio.FONT, 
-        text="EncSw:", 
-        color=0x000000
+        terminalio.FONT, text="EncSw:", color=0x000000
     )
     encoder_switch_caption_label.anchor_point = (1.0, 0.5)
     encoder_switch_caption_label.anchored_position = (56, 56)
     encoder_switch_group.append(encoder_switch_caption_label)
 
-    encoder_switch_text_label = label.Label(
-        terminalio.FONT,
-        text="Off",
-        color=0xffffff
-    )
+    encoder_switch_text_label = label.Label(terminalio.FONT, text="Off", color=0xFFFFFF)
     encoder_switch_text_label.x = 65
     encoder_switch_text_label.y = 56
     encoder_switch_group.append(encoder_switch_text_label)
@@ -162,11 +139,10 @@ def build_ui(display: displayio.Display = board.DISPLAY) -> List[
 
     return [splash, note_text_label, encoder_text_label, encoder_switch_text_label]
 
+
 def handle_key_event(
-    event_type: int, 
-    key_number: int, 
-    velocity: int = MIDI_NOTE_VELOCITY
-    ) -> None:
+    event_type: int, key_number: int, velocity: int = MIDI_NOTE_VELOCITY
+) -> None:
 
     """
     Handle a keyboard event.
@@ -184,20 +160,15 @@ def handle_key_event(
         color_index = int(255 / 12) * key
         macropad.pixels[key] = colorwheel(color_index)
         macropad.midi.send(macropad.NoteOn(MIDI_NOTES[key], velocity))
-        print("Sent MIDI Note ON message for note number {}".format(
-            MIDI_NOTES[key]
-            )
-        )
+        print("Sent MIDI Note ON message for note number {}".format(MIDI_NOTES[key]))
     elif event_type == KEY_RELEASED:
         macropad.pixels.fill((0, 0, 0))
         key_event_description = "OFF {}".format(key)
         macropad.midi.send(macropad.NoteOff(MIDI_NOTES[key], 0))
-        print("Sent MIDI Note OFF message for note number {}".format(
-            MIDI_NOTES[key]
-            )
-        )
+        print("Sent MIDI Note OFF message for note number {}".format(MIDI_NOTES[key]))
     else:
         key_event_description = "---"
+
 
 def last_key_event_type() -> int:
     """
@@ -212,20 +183,21 @@ def last_key_event_type() -> int:
 
     global key_event_description
     if key_event_description and (len(key_event_description) > 3):
-        if key_event_description[0:3].upper() == 'OFF':
+        if key_event_description[0:3].upper() == "OFF":
             return KEY_RELEASED
-        elif key_event_description[0:2].upper() == 'ON':
+        elif key_event_description[0:2].upper() == "ON":
             return KEY_PRESSED
         else:
             return KEY_NONE
-    
+
+
 ##############################################################################
 # Global Variables
 ##############################################################################
 
 macropad: MacroPad = MacroPad()
 
-i2c_bus = board.I2C()   # uses board.SCL and board.SDA
+i2c_bus = board.I2C()  # uses board.SCL and board.SDA
 imu_sensor = adafruit_icm20x.ICM20649(i2c_bus)
 temp_sensor = adafruit_bmp280.Adafruit_BMP280_I2C(i2c_bus)
 
@@ -241,15 +213,15 @@ encoder_sw: bool = False
 pitch_bend: Union[int, float] = 0
 last_note_time: float = 0
 
-accel_x, accel_y, accel_z  = 0.0, 0.0, 0.0
+accel_x, accel_y, accel_z = 0.0, 0.0, 0.0
 gyro_x, gyro_y, gyro_z = 0.0, 0.0, 0.0
 
 temp = 0.0
 pressure = 0.0
 altitude = 0.0
 
-last_accel_x, last_accel_y, last_accel_z  = 0.0, 0.0, 0.0
-last_gyro_x, last_gyro_y, last_gyro_z  = 0.0, 0.0, 0.0
+last_accel_x, last_accel_y, last_accel_z = 0.0, 0.0, 0.0
+last_gyro_x, last_gyro_y, last_gyro_z = 0.0, 0.0, 0.0
 note_velocity: int = 0
 
 ##############################################################################
@@ -257,8 +229,7 @@ note_velocity: int = 0
 ##############################################################################
 
 last_encoder_position: int = macropad.encoder
-splash, note_label, encoder_label, encoder_switch_label = \
-    build_ui(board.DISPLAY)
+splash, note_label, encoder_label, encoder_switch_label = build_ui(board.DISPLAY)
 
 ##############################################################################
 # Event Loop
@@ -272,7 +243,7 @@ while True:
     temp = temp_sensor.temperature
     pressure = temp_sensor.pressure
     altitude = temp_sensor.altitude
-    
+
     accel_x = (accel_x * 0.9) + (last_accel_x * 0.1)
     accel_y = (accel_y * 0.9) + (last_accel_y * 0.1)
     accel_z = (accel_z * 0.9) + (last_accel_z * 0.1)
@@ -301,10 +272,11 @@ while True:
             elif key_event.released:
                 handle_key_event(KEY_RELEASED, key)
 
-    if (time.monotonic() > last_note_time + 0.75) and \
-        (last_key_event_type() == KEY_RELEASED):
+    if (time.monotonic() > last_note_time + 0.75) and (
+        last_key_event_type() == KEY_RELEASED
+    ):
         key_event_description = "---"
-    
+
     encoder_val = macropad.encoder
     if encoder_val is not last_encoder_position:
         encoder_change = encoder_val - last_encoder_position

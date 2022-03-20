@@ -1,8 +1,9 @@
 import time
-import board
-import adafruit_icm20x
 
-i2c = board.I2C()   # uses board.SCL and board.SDA
+import adafruit_icm20x
+import board
+
+i2c = board.I2C()  # uses board.SCL and board.SDA
 icm = adafruit_icm20x.ICM20649(i2c)
 
 while True:
