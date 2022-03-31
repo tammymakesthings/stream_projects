@@ -1,0 +1,3 @@
+[submodule "Tmt_CircuitPython_carddeck"]
+	path = Tmt_CircuitPython_carddeck
+	url = git@github.com:tammymakesthings/Tmt_CircuitPython_carddeck
